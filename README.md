@@ -20,7 +20,7 @@ Downloaded pre-trained teacher models and organize as follows:
 
 ```
 experiments/
-    teacher_<arch>_seed0/
+    teacher_<arch>/
         ckpt/
             best.pth
 ```
