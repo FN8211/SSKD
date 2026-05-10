@@ -1,0 +1,8 @@
+# Data
+data/
+
+# Experiments
+!experiments/teacher_*/
+
+# Python
+__pycache__/
