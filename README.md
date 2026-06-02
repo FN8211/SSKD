@@ -38,6 +38,9 @@ python teacher.py --arch <teacher_model> --gpu-id 0
 ```bash
 python student.py --t-path <teacher_checkpoint_folder> --s-arch <student_model> --gpu-id 0
 ```
+python student_rot.py --t-path experiments\teacher_vgg13 --s-arch vgg8 --gpu-id 0 --val-interval 5
+python student_jigsaw.py --t-path experiments\teacher_vgg13 --s-arch vgg8 --gpu-id 0 --val-interval 5
+python student_examplar.py --t-path experiments\teacher_vgg13 --s-arch vgg8 --gpu-id 0 --val-interval 5
 
 ## Key Arguments
 

@@ -87,7 +87,7 @@ if __name__ == '__main__':
     trainset = CIFAR100('./data', train=True, transform=transform_train)
     valset = CIFAR100('./data', train=False, transform=transform_test)
 
-    train_loader = DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=False)
+    train_loader = DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True, persistent_workers=True)
     val_loader = DataLoader(valset, batch_size=args.batch_size, shuffle=False, num_workers=4, pin_memory=False)
 
     ckpt_path = osp.join(args.t_path, 'ckpt/best.pth')
