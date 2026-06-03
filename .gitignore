@@ -2,7 +2,7 @@
 data/
 
 # Experiments
-experiments/
+experiments/*
 !experiments/teacher_*/
 
 # Python
