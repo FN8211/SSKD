@@ -7,3 +7,5 @@ experiments/
 
 # Python
 __pycache__/
+events/
+.claude/
