@@ -138,5 +138,7 @@ if __name__ == '__main__':
                 os.makedirs(osp.dirname(name), exist_ok=True)
                 torch.save(state_dict, name)
                 best_acc = acc_record.avg
-                
+
+        scheduler.step()
+
     print('best_acc: {:.2f}'.format(best_acc))
