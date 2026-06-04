@@ -1,11 +1,10 @@
 # Data
 data/
 
-# Experiments
-experiments/*
-!experiments/teacher_*/
+#venv
+.venv/
+
 
 # Python
 __pycache__/
-events/
 .claude/
