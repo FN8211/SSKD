@@ -69,7 +69,7 @@ class wrapper_exemplar(nn.Module):
     def __init__(self, module, num_data=50000):
         super().__init__()
         self.backbone = module
-        feat_dim = module.classifier.in_features
+        feat_dim = list(module.children())[-1].in_features
         self.proj_head = nn.Linear(feat_dim, num_data)
 
     def forward(self, x, bb_grad=True):

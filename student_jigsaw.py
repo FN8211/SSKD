@@ -66,7 +66,7 @@ class wrapper_jigsaw(nn.Module):
     def __init__(self, module):
         super().__init__()
         self.backbone = module
-        feat_dim = module.classifier.in_features
+        feat_dim = list(module.children())[-1].in_features
         self.proj_head = nn.Linear(feat_dim, 24)   # 4! = 24 permutations
 
     def forward(self, x, bb_grad=True):
