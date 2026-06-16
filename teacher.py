@@ -65,7 +65,7 @@ if __name__ == '__main__':
     trainset = CIFAR100('./data', train=True, transform=transform_train, download=True)
     valset = CIFAR100('./data', train=False, transform=transform_test, download=True)
     train_loader = DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True, persistent_workers=True)
-    val_loader = DataLoader(valset, batch_size=args.batch_size, shuffle=False, num_workers=4, pin_memory=False)
+    val_loader = DataLoader(valset, batch_size=args.batch_size, shuffle=False, num_workers=4, pin_memory=False, persistent_workers=True)
 
     model = model_dict[args.arch](num_classes=100).cuda()
     optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)

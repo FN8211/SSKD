@@ -32,6 +32,7 @@ Available architectures: `MobileNetV2`, `resnet8x4`, `resnet20`, `resnet56`, `Sh
 **Train a teacher:**
 ```bash
 python teacher.py --arch <teacher_model> --gpu-id 0
+python teacher.py --arch vgg8 --gpu-id 0
 ```
 
 **Train a student:**
@@ -41,6 +42,8 @@ python student.py --t-path <teacher_checkpoint_folder> --s-arch <student_model> 
 python student_rot.py --t-path experiments\teacher_vgg13 --s-arch vgg8 --gpu-id 0 --val-interval 5
 python student_jigsaw.py --t-path experiments\teacher_vgg13 --s-arch vgg8 --gpu-id 0 --val-interval 5
 python student_examplar.py --t-path experiments\teacher_vgg13 --s-arch vgg8 --gpu-id 0 --val-interval 5
+python student_triplet.py --t-path experiments\teacher_vgg13 --s-arch vgg8 --gpu-id 0 --val-interval 5
+python student_wsld.py --t-path experiments\teacher_vgg13 --s-arch vgg8 --gpu-id 0 --val-interval 5 --t-ckpt experiments\sskd_student_vgg8_weight0.1+0.9+2.7+10.0+1.0_T4.0+4.0+0.5_ratio1.0+0.75_seed0_teacher_vgg13\ckpt\teacher.pth
 
 ## Key Arguments
 
