@@ -80,15 +80,15 @@ This is the heart of the blog (Content = 50%). Structure each experiment as a se
 
 ---
 
-## 4.1 Experiment 1: Table 2 Reproduction — SS Methods Comparison (vgg13 → vgg8, CIFAR-100)
+### 4.1 Experiment 1: Table 2 Reproduction — SS Methods Comparison (vgg13 → vgg8, CIFAR-100)
 
 *Owner: Yanzhe · Criterion: Reproduced*
 
-### Question
+**Question:**
 
 Table 2 of the SSKD paper claims that student accuracy is positively correlated with the quality of the self-supervision (SS) method used, measured by linear evaluation accuracy on ImageNet, with the ranking Exemplar < Jigsaw < Rotation < Contrastive. Our question is: after re-running the original code and implementing the three missing SS methods, does this ranking still hold?
 
-### Setup
+**Setup:**
 
 The architecture pair is vgg13 (teacher) → vgg8 (student) on CIFAR-100. All four methods share the same hyperparameters from the paper: τ_kd = τ_T = 4, τ_ss = 0.5, λ1 = 0.1, λ2 = 0.9, λ3 = 2.7, λ4 = 10.0; 240 training epochs with an initial learning rate of 0.05, decayed by a factor of 10 at epochs 150, 180, and 210; batch size 64, SGD with momentum 0.9 and weight decay 5e-4. We use an RTX 3060 (6GB), whereas the original paper used a TITAN-X-Pascal.
 
@@ -96,7 +96,7 @@ For Contrastive, we used the implementation from the original authors' repositor
 
 As reference points, we also trained the teacher (vgg13) and a vanilla student (vgg8) independently, using standard cross-entropy classification with no distillation.
 
-### Results
+**Results:**
 
 **Main table (corresponding to Table 2 of the paper)**
 
@@ -114,7 +114,7 @@ As reference points, we also trained the teacher (vgg13) and a vanilla student (
 | Paper | 75.38 | 70.68 |
 | Reproduced | 74.49 | 70.73 |
 
-### Analysis
+**Analysis:**
 
 Overall, Rotation and Contrastive still outperform Exemplar and Jigsaw, and Contrastive achieves the highest accuracy among the four (74.53). This finding broadly consistent with the paper's general direction that higher SS quality leads to higher student accuracy. All four SSKD variants also improve over the vanilla student, which scores 70.73, confirming that distillation with SS signals is beneficial regardless of the SS method used.
 
@@ -179,19 +179,25 @@ The reproduced Teacher Acc. of 74.49 is close to the paper's 75.38, a gap of abo
 
 ---
 
-## 4.5 Additional Experiments: Loss Component Modifications
+### 4.5 Additional Experiments: Loss Component Modifications
 
-### Method
+**Method:**
 
 The SSKD framework achieves strong distillation performance, but its standard KD loss $L_{kd}$ has limitations in how it handles class-level and sample-level knowledge transfer. We therefore propose two complementary modifications, DKD and WSLD, to address these limitations.
 
-#### [Decoupled Knowledge Distillation (DKD)](https://arxiv.org/abs/2203.08679)
+##### [Decoupled Knowledge Distillation (DKD)](https://arxiv.org/abs/2203.08679)
+
+For a training sample with ground-truth label $y$, the *target class* refers to class $y$ itself, while *non-target classes* refer to all other $C-1$ classes in the output space.
 
 Standard KD couples the target class and non-target class distributions into a single KL divergence term, which may limit the flexibility of knowledge transfer. DKD decouples $L_{kd}$ into two components. TCKD aligns the binary distribution between the target class and all non-target classes:
 
 $$L_{TCKD} = \text{KL}\left(\left[p_t^y,\ 1-p_t^y\right] \,\|\, \left[p_s^y,\ 1-p_s^y\right]\right)$$
 
-where $p_t^y$ and $p_s^y$ are the teacher's and student's softmax probabilities on the target class $y$. 
+where $p_t^y$ and $p_s^y$ are the teacher's and student's softmax probabilities on the target class $y$ at temperature $\tau$, where $\tau$ denotes the standard distillation temperature, identical in role to the temperature used in vanilla KD (Hinton et al., 2015), controlling the softness of the output distributions for both teacher and student:
+
+$$p_t^y = \frac{\exp(z_t^y/\tau)}{\sum_{k=1}^{C}\exp(z_t^k/\tau)}, \qquad p_s^y = \frac{\exp(z_s^y/\tau)}{\sum_{k=1}^{C}\exp(z_s^k/\tau)}$$
+
+Here $[p^y, 1-p^y]$ collapses the original $C$-way distribution into a binary one over {target class, all other classes}, capturing only whether the model assigns sufficient probability to the correct class, regardless of how probability is distributed among the remaining $C-1$ classes.
 
 NCKD aligns the distribution over non-target classes only:
 
@@ -203,7 +209,7 @@ $$L_{kd}^{DKD} = \tau^2 \left(\alpha \cdot L_{TCKD} + \beta \cdot L_{NCKD}\right
 
 with $\alpha = 1.0$ and $\beta = 8.0$ in our experiments.
 
-#### [Weighted Soft Labels Distillation (WSLD)](https://arxiv.org/abs/2102.00650)
+##### [Weighted Soft Labels Distillation (WSLD)](https://arxiv.org/abs/2102.00650)
 
 Standard KD treats all samples equally, but samples that are already easy for the student carry less informative gradient signal. WSLD assigns a per-sample adaptive weight to the KD loss based on the ratio of student and teacher cross-entropy losses at temperature $\tau = 1$:
 
@@ -213,11 +219,11 @@ A higher weight is assigned when the student's loss is large relative to the tea
 
 $$L_{kd}^{WSLD} = \tau^2 \cdot \frac{1}{N}\sum_{i=1}^{N} w_i \cdot \text{KL}\left(p_s(x_i;\tau) \,\|\, p_t(x_i;\tau)\right)$$
 
-### Setup
+**Setup:**
 
 All three modifications are evaluated on vgg13→vgg8, CIFAR-100, using the same hyperparameters and training protocol as Section 4.1. The original SSKD with Contrastive is used as the baseline in all comparisons.
 
-### Results
+**Results:**
 
 | Method | Student Acc. (%) |
 |---|---|
@@ -225,7 +231,7 @@ All three modifications are evaluated on vgg13→vgg8, CIFAR-100, using the same
 | SSKD + DKD | 74.68 |
 | SSKD + WSLD | 74.61 |
 
-### Analysis
+**Analysis:**
 
 DKD and WSLD both outperform the baseline, achieving accuracies of 74.68% and 74.61%, respectively. This result shows that both class-level distillation and sample-level re-weighting improve performance. However, the gains are relatively small, suggesting that the SS auxiliary signal already recovers much of the information that standard KD fails to transfer.
 
@@ -260,7 +266,9 @@ Since DKD and WSLD address different aspects of knowledge distillation, they may
 
 **Content:** A brief table or paragraph listing what each member did. Required by the submission guidelines. Example:
 
-> **Yanzhe** reproduced Table 2 (four SS methods on vgg13→vgg8, CIFAR-100) and explored the effect of loss components (L_T, L_ss) on student accuracy (Criterion: Reproduced). **Chenyu** trained the vgg13→vgg8 pair on Tiny ImageNet, adapting the pipeline for the new dataset (Criterion: New data). **Shanghong** ran all four SS methods on the resnet56→resnet20 pair on CIFAR-100 (Criterion: New algorithm variant). All members contributed to writing the blog post.
+> **Yanzhe** reproduced Table 2 (four SS methods on vgg13→vgg8, CIFAR-100), explored the effect of loss components ($L_T$, $L_{ss}$) on student accuracy (Criterion: Reproduced). He also proposed two complementary loss modifications (DKD, WSLD) to address limitations in the standard KD loss (Criterion: New algorithm variant).
+> **Chenyu** trained the vgg13→vgg8 pair on Tiny ImageNet, adapting the pipeline for the new dataset (Criterion: New data). 
+> **Shanghong** ran all four SS methods on the resnet56→resnet20 pair on CIFAR-100 (Criterion: New algorithm variant). All members contributed to writing the blog post.
 > 
 
 ---
