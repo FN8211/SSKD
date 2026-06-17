@@ -1,6 +1,7 @@
 # Data
 data/
 experiments/
+experiments_tin/*/ckpt/
 
 #venv
 .venv/
