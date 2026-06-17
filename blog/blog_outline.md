@@ -193,15 +193,20 @@ Standard KD couples the target class and non-target class distributions into a s
 
 $$L_{TCKD} = \text{KL}\left(\left[p_t^y,\ 1-p_t^y\right] \,\|\, \left[p_s^y,\ 1-p_s^y\right]\right)$$
 
+$$= p_t^y\log\frac{p_t^y}{p_s^y} + (1-p_t^y)\log\frac{1-p_t^y}{1-p_s^y}$$
+
 where $p_t^y$ and $p_s^y$ are the teacher's and student's softmax probabilities on the target class $y$ at temperature $\tau$, where $\tau$ denotes the standard distillation temperature, identical in role to the temperature used in vanilla KD (Hinton et al., 2015), controlling the softness of the output distributions for both teacher and student:
 
 $$p_t^y = \frac{\exp(z_t^y/\tau)}{\sum_{k=1}^{C}\exp(z_t^k/\tau)}, \qquad p_s^y = \frac{\exp(z_s^y/\tau)}{\sum_{k=1}^{C}\exp(z_s^k/\tau)}$$
+
 
 Here $[p^y, 1-p^y]$ collapses the original $C$-way distribution into a binary one over {target class, all other classes}, capturing only whether the model assigns sufficient probability to the correct class, regardless of how probability is distributed among the remaining $C-1$ classes.
 
 NCKD aligns the distribution over non-target classes only:
 
 $$L_{NCKD} = \text{KL}\left(\hat{p}_t^{\neg y} \,\|\, \hat{p}_s^{\neg y}\right)$$
+
+$$\hat{p}_t^{\neg y,k} = \frac{p_t^k}{1-p_t^y}, \qquad \hat{p}_s^{\neg y,k} = \frac{p_s^k}{1-p_s^y} \qquad \text{for } k \neq y$$
 
 where $\hat{p}^{\neg y}$ denotes the re-normalized distribution over non-target classes. The combined DKD loss replaces $L_{kd}$:
 
