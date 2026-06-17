@@ -121,7 +121,7 @@ Our reproduction falls under "Reproduced" rather than "Replicated" in the course
 
 ### 3.5 Training Setup
 
-All experiments follow the hyperparameters from §6.4 of the SSKD paper unless otherwise noted. The temperatures are $\tau_{kd} = \tau_T = 4$ and $\tau_{ss} = 0.5$. The loss weights are $\lambda_1 = 0.1$, $\lambda_2 = 0.9$, $\lambda_3 = 2.7$, $\lambda_4 = 10.0$. All models are trained for 240 epochs with an initial learning rate of 0.05, decayed by a factor of 10 at epochs 150, 180, and 210. We use SGD with momentum 0.9 and weight decay $5 \times 10^{-4}$, with a batch size of 64. The original paper reports experiments on a TITAN-X-Pascal GPU; our experiments are run on consumer-grade GPUs (RTX 3060 / RTX 3090), which may introduce minor numerical differences due to floating-point nondeterminism across hardware.
+All experiments follow the hyperparameters from §6.4 of the SSKD paper unless otherwise noted. The temperatures are $\tau_{kd} = \tau_T = 4$ and $\tau_{ss} = 0.5$. The loss weights are $\lambda_1 = 0.1$, $\lambda_2 = 0.9$, $\lambda_3 = 2.7$, $\lambda_4 = 10.0$. **Note:** the paper's Eq. 8 assigns $\lambda_3 = 2.7$ to $\mathcal{L}_{ss}$ and $\lambda_4 = 10.0$ to $\mathcal{L}_T$, giving the larger weight to the transformed-data KD term. However, the released codebase uses `ss-weight=10.0` and `tf-weight=2.7`, effectively swapping the two — giving the larger weight to $\mathcal{L}_{ss}$ instead. All our experiments follow the codebase values, since those determine what was actually executed. All models are trained for 240 epochs with an initial learning rate of 0.05, decayed by a factor of 10 at epochs 150, 180, and 210. We use SGD with momentum 0.9 and weight decay $5 \times 10^{-4}$, with a batch size of 64. The original paper reports experiments on a TITAN-X-Pascal GPU; our experiments are run on consumer-grade GPUs (RTX 3060 / RTX 3090), which may introduce minor numerical differences due to floating-point nondeterminism across hardware.
 
 ---
 
@@ -262,22 +262,57 @@ Since DKD and WSLD address different aspects of knowledge distillation, they may
 
 ### 4.4 Experiment 4: New Architecture Variant — resnet56 → resnet20 on CIFAR-100
 
-*Owner: Shanghong · Criterion: New algorithm variant*
+**Question:** The SSKD paper evaluates all four SS methods only on the vgg13→vgg8 pair (Table 2) and applies only the contrastive method to other architecture pairs (Table 3). Does the positive correlation between SS method quality and student accuracy hold when all four SS methods are applied to a structurally different architecture pair, resnet56→resnet20?
 
-**Question:** Does the SS-quality → student-accuracy correlation (Table 2's central claim) hold on a different teacher-student architecture pair (resnet56→resnet20)?
+**Setup:**
 
-**Setup:** Run all four SS methods (Contrastive, Rotation, Jigsaw, Exemplar) on resnet56→resnet20, CIFAR-100, using the same hyperparameters as the vgg pair experiments (or note any necessary adjustments). For each SS method, describe how the SS head attaches to the resnet backbone.
+We train four separate SSKD models on CIFAR-100 using the resnet56→resnet20 pair, one per SS method. All four experiments use the hyperparameters from Section 3.5. Parameters not specified in the paper — teacher SS schedule and seed — are taken from the codebase defaults: the teacher's SS module is trained for 60 epochs with an initial learning rate of 0.05 decayed by 0.1 at epochs 30 and 45, and the seed is fixed at 0. For the contrastive method, selective transfer is applied to $\mathcal{L}_{ss}$ with ratio 0.75 (i.e., top-75% least-wrong incorrect predictions are kept); for Rotation, Jigsaw, and Exemplar, this filtering is not applied since these methods use classification-based matching rather than similarity ranking.
+
+Each SS head attaches to `feats[-1]`, the backbone's final feature layer before the classifier. The head architectures are as defined in Sections 2.3 and 3.3: a two-layer MLP for Contrastive, and single linear layers for Rotation (4-way), Jigsaw (24-way), and Exemplar (50,000-way). A key architectural detail is that CIFAR-variant ResNets in this codebase use `num_filters = [16, 16, 32, 64]`, so both resnet56 and resnet20 produce 64-dimensional feature vectors after global average pooling — compared to 512-dimensional vectors for VGG13 and VGG8. This difference becomes relevant in the analysis below.
 
 **Results:**
 
-- Table mirroring Table 2's format but for resnet56→resnet20: SS method, SS performance (from the paper), student accuracy (yours). Include teacher accuracy and vanilla student accuracy.
-- Side-by-side comparison with the vgg13→vgg8 results from Experiment 1 (either in the same table or a paired figure).
+The following table reports the best validation accuracy (top-1, %) achieved during training for each SS method on the resnet56→resnet20 pair. SS Quality is the ImageNet linear evaluation accuracy (ResNet-50) reported in SSKD Table 2. The Paper Acc column shows the student accuracy from Table 2 on vgg13→vgg8 for comparison. The observed ranking on the resnet pair (Rotation > Contrastive > Exemplar ≈ Jigsaw) disrupts the paper's vgg-pair ordering (Contrastive > Rotation > Jigsaw > Exemplar).
+
+| | SS Quality (%) | Paper Acc (vgg pair, %) | Student Acc (resnet pair, %) |
+|---|---|---|---|
+| Teacher | — | — | 73.44 |
+| Vanilla student | — | — | 69.63 |
+| **SSKD — Contrastive** | 69.3 | 75.48 | **70.87** |
+| **SSKD — Rotation** | 48.9 | 75.01 | **71.31** |
+| **SSKD — Jigsaw** | 45.7 | 74.85 | 70.68 |
+| **SSKD — Exemplar** | 31.5 | 74.57 | 70.70 |
+
+The following table provides additional context: the resnet56 teacher's SS pretext task accuracy on CIFAR-100 after the 60-epoch SS training phase. These values measure how well the teacher *solves* each SS task, which is distinct from the SS Quality column above (which measures representation quality via ImageNet linear evaluation).
+
+| SS Method | Task Type | # Classes | Val SS Acc (%) | Train SS Acc (%) |
+|---|---|---|---|---|
+| Contrastive | Similarity matching | — | 78.62 | 74.81 |
+| Rotation | Classification | 4 | 42.82 | 44.11 |
+| Jigsaw | Classification | 24 | 28.20 | 29.27 |
+| Exemplar | Classification | 50,000 | 0.00 | 9.72 |
 
 **Analysis:**
 
-- Does the ranking Exemplar < Jigsaw < Rotation < Contrastive hold for the resnet pair?
-- The paper claims SSKD is "model-agnostic." Does your evidence support or challenge this claim?
-- If the ranking differs from the vgg pair, discuss architectural reasons (e.g., residual connections may interact differently with SS tasks, different feature map sizes).
+**The ranking is partially disrupted.** The paper predicts the ordering Exemplar < Jigsaw < Rotation < Contrastive. Our resnet56→resnet20 results produce a different ranking:
+
+> Jigsaw (70.68) ≤ Exemplar (70.70) < Contrastive (70.87) < **Rotation (71.31)**
+
+Two deviations stand out. First, Rotation outperforms Contrastive by 0.44 percentage points, reversing the top-two ordering from Table 2. Second, Exemplar slightly outperforms Jigsaw (70.70 vs. 70.68), reversing their expected positions, although the 0.02 pp difference is within noise and effectively a tie.
+
+**Rotation's advantage on ResNets.** Rotation achieves the highest student accuracy on the resnet pair, though the margin is small (0.44 pp) and based on a single seed, so we interpret this cautiously. Still, the reversal invites analysis of why Contrastive may benefit less from the ResNet backbone.
+
+The most concrete architectural difference is feature dimensionality at the SS head attachment point. As noted above, both resnet56 and resnet20 produce 64-dimensional feature vectors, compared to 512 dimensions for VGG13/VGG8. The contrastive SS head projects features into an embedding space of the *same* dimensionality as the input (`nn.Linear(feat_dim, feat_dim) → ReLU → nn.Linear(feat_dim, feat_dim)`), so the contrastive task computes cosine similarities in a 64-dimensional space on the resnet pair versus a 512-dimensional space on the VGG pair — an 8× reduction in embedding capacity. Computing meaningful similarity rankings in such a low-dimensional space is inherently more constrained, potentially limiting how well the contrastive head can discriminate between views. Rotation prediction, by contrast, is a 4-way classification (`nn.Linear(64, 4)`) whose effectiveness does not depend on embedding richness, making it more robust to low feature dimensionality. This suggests that the contrastive method's relative advantage may scale with the backbone's feature dimension — a hypothesis that could be tested by widening the ResNet's final layer or using a larger projection head.
+
+A second observation concerns teacher SS training quality. The resnet56 teacher achieves 42.82% validation accuracy on rotation prediction (chance level: 25%), while the contrastive head reaches 78.62%. Despite the contrastive head's higher raw accuracy, this does not translate to a student-accuracy advantage. One possible explanation is that what matters for distillation is not how well the teacher solves the SS task, but how well the SS-derived gradients *complement* the standard KD signal — and a 4-way geometric classification may provide more complementary training signal than similarity matching in a low-dimensional embedding space.
+
+Confirming the feature-dimension hypothesis would require controlled ablations (e.g., varying projection head dimension while holding everything else fixed) and multi-seed runs. The broader question of how architecture interacts with SS method choice is studied by Kolesnikov et al. (2019), who find that the optimal pretext task varies with architecture configuration across different ResNet widths and depths — consistent with the architecture-dependent ranking we observe, though their setting (self-supervised pre-training on ImageNet) differs from ours (SS-augmented KD on CIFAR-100).
+
+**The bottom two methods are tightly clustered.** Jigsaw and Exemplar produce nearly identical accuracy (70.68 vs. 70.70), despite a substantial gap in SS Quality (45.7 vs. 31.5). This suggests that below a certain SS quality threshold, the marginal benefit to student accuracy levels off, and the positive correlation the paper observes at the top of the quality range does not extend to the bottom. The vgg13→vgg8 results in Section 4.1 show a similar but milder pattern: the Exemplar–Jigsaw gap is 0.12 pp in our reproduction (0.28 pp in the paper), much smaller than the Rotation–Contrastive gap.
+
+**All four SSKD variants improve over the vanilla student.** Despite the ranking disruption, all four SS methods produce accuracy above 70.6%, a meaningful improvement over the vanilla resnet20 baseline (69.63%). The best-performing method (Rotation, 71.31%) closes 44% of the gap between the vanilla student and the teacher (73.44%). This supports the broader claim that integrating self-supervision into KD is beneficial regardless of the SS method used, even if the specific ranking is architecture-dependent.
+
+**Implications for the "model-agnostic" claim.** The paper presents SSKD as a general framework where SS quality predicts student accuracy regardless of architecture. Our resnet pair results partially challenge this: while all four methods improve student accuracy (supporting generality), the specific ranking does not transfer from VGG to ResNet (challenging the quality–accuracy correlation as a universal law). The reversal of Contrastive and Rotation suggests that the optimal SS method may depend on architectural properties such as feature dimensionality. Practitioners applying SSKD to new architectures should not assume that the contrastive method will always be the best choice; evaluating multiple SS methods on the target architecture is advisable.
 
 ---
 
