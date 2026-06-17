@@ -191,7 +191,7 @@ For a training sample with ground-truth label $y$, the *target class* refers to 
 
 Standard KD couples the target class and non-target class distributions into a single KL divergence term, which may limit the flexibility of knowledge transfer. DKD decouples $L_{kd}$ into two components. TCKD aligns the binary distribution between the target class and all non-target classes:
 
-$$L_{TCKD} = \text{KL}\left(\left[p_t^y,\ 1-p_t^y\right] \,\|\, \left[p_s^y,\ 1-p_s^y\right]\right)$$
+$$L_{TCKD} = \text{KL}\left(\left[p_t^y,\ 1-p_t^y\right] \,\|\, \left[p_s^y,\ 1-p_s^y\right]\right) := \sum_{k\in\{y,\neg y\}} b_t^k \log\frac{b_t^k}{b_s^k}$$
 
 $$= p_t^y\log\frac{p_t^y}{p_s^y} + (1-p_t^y)\log\frac{1-p_t^y}{1-p_s^y}$$
 
