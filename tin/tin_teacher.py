@@ -22,14 +22,14 @@ from tiny_imagenet import TinyImageNetPlain, TIN_MEAN, TIN_STD
 torch.backends.cudnn.benchmark = True
 
 parser = argparse.ArgumentParser(description='train Tiny ImageNet teacher (vgg13).')
-parser.add_argument('--epoch',        type=int,   default=240)
-parser.add_argument('--batch-size',   type=int,   default=128)
+parser.add_argument('--epoch',        type=int,   default=140)
+parser.add_argument('--batch-size',   type=int,   default=64)
 parser.add_argument('--val-interval', type=int,   default=1)
 parser.add_argument('--lr',           type=float, default=0.05)
 parser.add_argument('--momentum',     type=float, default=0.9)
 parser.add_argument('--weight-decay', type=float, default=5e-4)
 parser.add_argument('--gamma',        type=float, default=0.1)
-parser.add_argument('--milestones',   type=int,   nargs='+', default=[150, 180, 210])
+parser.add_argument('--milestones',   type=int,   nargs='+', default=[60, 90, 110])
 parser.add_argument('--save-interval',type=int,   default=40)
 parser.add_argument('--arch',         type=str,   default='vgg13')
 parser.add_argument('--data-root',    type=str,   default='./data/tiny-imagenet-200')
@@ -50,8 +50,10 @@ if __name__ == '__main__':
     transform_train = transforms.Compose([
         transforms.RandomCrop(64, padding=8),
         transforms.RandomHorizontalFlip(),
+        transforms.RandAugment(num_ops=2, magnitude=9),   # 新增
         transforms.ToTensor(),
         transforms.Normalize(mean=TIN_MEAN, std=TIN_STD),
+        transforms.RandomErasing(p=0.25),                  # 新增，注意要放在 ToTensor 之后
     ])
     transform_test = transforms.Compose([
         transforms.ToTensor(),
