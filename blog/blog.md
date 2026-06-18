@@ -6,7 +6,7 @@
 
 **Repository:** [github.com/FN8211/SSKD](https://github.com/FN8211/SSKD)
 
-**Paper:** Xu et al., "Knowledge Distillation Meets Self-Supervision," ECCV 2020. ([arXiv:2006.07114](https://arxiv.org/abs/2006.07114))
+**Paper:** Xu et al., "Knowledge Distillation Meets Self-Supervision," ECCV 2020 [2]. ([arXiv:2006.07114](https://arxiv.org/abs/2006.07114))
 
 **Summary:** [TODO]
 
@@ -16,7 +16,7 @@
 
 ### 2.1 Knowledge Distillation
 
-Knowledge distillation (KD) compresses a large, well-trained *teacher* network into a smaller *student* network by training the student to mimic the teacher's output distribution rather than only learning from hard one-hot labels (Hinton et al., 2015). The intuition is that the teacher's output probabilities over all classes — called *soft targets* — encode inter-class similarities that hard labels cannot express. For example, a teacher trained on CIFAR-100 might assign a small but nonzero probability to "bus" when the true label is "truck"; this relative probability carries structural information about semantic similarity that benefits the student.
+Knowledge distillation (KD) compresses a large, well-trained *teacher* network into a smaller *student* network by training the student to mimic the teacher's output distribution rather than only learning from hard one-hot labels (Hinton et al., 2015) [1]. The intuition is that the teacher's output probabilities over all classes — called *soft targets* — encode inter-class similarities that hard labels cannot express. For example, a teacher trained on CIFAR-100 might assign a small but nonzero probability to "bus" when the true label is "truck"; this relative probability carries structural information about semantic similarity that benefits the student.
 
 To produce informative soft targets, a temperature parameter $\tau$ is applied to the logits before the softmax:
 
@@ -30,9 +30,9 @@ where $t$ and $s$ denote teacher and student, $C$ is the total number of classes
 
 ### 2.2 What SSKD Adds: Self-Supervision as an Auxiliary Distillation Channel
 
-Conventional KD transfers knowledge through a single channel: the teacher's class predictions on normal training data. Xu et al. (ECCV 2020) argue that this single task captures only one facet of the knowledge embedded in a large teacher network. Their framework, *Self-Supervised Knowledge Distillation* (SSKD), introduces a second, complementary channel by appending a self-supervised (SS) pretext task to both teacher and student. The teacher's predictions on this auxiliary task — even when imperfect — encode additional structured knowledge about the composition of semantic and geometric information in the input, which is not captured by classification logits alone.
+Conventional KD transfers knowledge through a single channel: the teacher's class predictions on normal training data. Xu et al. (ECCV 2020) [2] argue that this single task captures only one facet of the knowledge embedded in a large teacher network. Their framework, *Self-Supervised Knowledge Distillation* (SSKD), introduces a second, complementary channel by appending a self-supervised (SS) pretext task to both teacher and student. The teacher's predictions on this auxiliary task — even when imperfect — encode additional structured knowledge about the composition of semantic and geometric information in the input, which is not captured by classification logits alone.
 
-**Contrastive prediction as the main pretext task.** As illustrated in Figure 1, SSKD uses contrastive learning, inspired by SimCLR (Chen et al., 2020), as its primary SS task. Given a mini-batch of $N$ images $\{x_i\}_{i=1:N}$, each image is independently transformed by a function $t(\cdot)$ sampled from a pool of four transformations (color dropping, rotation by $\pm90°$ or $180°$, random cropping with resize, and color jitter) to produce $\{\tilde{x}_i\}_{i=1:N}$. Both $x_i$ and $\tilde{x}_i$ are fed through the network backbone $f(\cdot)$ to extract representations, which are then projected by a 2-layer MLP into a latent space where cosine similarities are computed. The pair $(\tilde{x}_i, x_i)$ is treated as a positive pair; all $(\tilde{x}_i, x_k)$ with $k \neq i$ are negative pairs. 
+**Contrastive prediction as the main pretext task.** As illustrated in Figure 1, SSKD uses contrastive learning, inspired by SimCLR (Chen et al., 2020) [3], as its primary SS task. Given a mini-batch of $N$ images $\{x_i\}_{i=1:N}$, each image is independently transformed by a function $t(\cdot)$ sampled from a pool of four transformations (color dropping, rotation by $\pm90°$ or $180°$, random cropping with resize, and color jitter) to produce $\{\tilde{x}_i\}_{i=1:N}$. Both $x_i$ and $\tilde{x}_i$ are fed through the network backbone $f(\cdot)$ to extract representations, which are then projected by a 2-layer MLP into a latent space where cosine similarities are computed. The pair $(\tilde{x}_i, x_i)$ is treated as a positive pair; all $(\tilde{x}_i, x_k)$ with $k \neq i$ are negative pairs. 
 
 The contrastive loss encourages the network to identify the correct positive pair:
 
@@ -53,18 +53,18 @@ $$\mathcal{L} = \lambda_1 \mathcal{L}_{ce} + \lambda_2 \mathcal{L}_{kd} + \lambd
 
 ![The SSKD training scheme: the teacher is first trained on classification, then its self-supervised module is fine-tuned on the contrastive task with the backbone frozen, and finally the student is distilled on all four objectives ($\mathcal{L}_{ce}$, $\mathcal{L}_{kd}$, $\mathcal{L}_T$, $\mathcal{L}_{ss}$) from both normal and transformed inputs.](Fig2_SSKD_train_scheme.png)
 
-***Figure 1.** The three-stage SSKD training scheme (Figure 2 in Xu et al., ECCV 2020). Normal images $x$ and their transformed versions $\tilde{x}$ are passed through the backbone and the SS projection module; the student is trained to mimic the teacher's classification logits and contrastive similarity matrix on both branches.*
+***Figure 1.** The three-stage SSKD training scheme (Figure 2 in Xu et al., ECCV 2020 [2]). Normal images $x$ and their transformed versions $\tilde{x}$ are passed through the backbone and the SS projection module; the student is trained to mimic the teacher's classification logits and contrastive similarity matrix on both branches.*
 
-**Selective transfer.** The teacher's contrastive predictions are sometimes severely wrong (e.g., matching a transformed image to the wrong original). Xu et al. observe that extremely incorrect predictions can mislead the student. To handle this, SSKD ranks transformed samples by the teacher's prediction error level and only transfers the correct predictions plus the top-$k$% least-wrong incorrect predictions. The authors find that $k = 75$ gives the best trade-off across architectures.
+**Selective transfer.** The teacher's contrastive predictions are sometimes severely wrong (e.g., matching a transformed image to the wrong original). Xu et al. [2] observe that extremely incorrect predictions can mislead the student. To handle this, SSKD ranks transformed samples by the teacher's prediction error level and only transfers the correct predictions plus the top-$k$% least-wrong incorrect predictions. The authors find that $k = 75$ gives the best trade-off across architectures.
 
 ### 2.3 Four Self-Supervised Methods
 
 While contrastive prediction is SSKD's primary pretext task, the paper evaluates three additional SS methods to test whether the quality of the SS method influences the student's final accuracy. The four methods, ordered by their representation quality (measured by linear evaluation accuracy on ImageNet with ResNet-50, sourced from prior work), are:
 
-- **Exemplar** (Dosovitskiy et al., 2014): treats each training instance as its own class and applies heavy transformations; the SS module is a classifier with as many classes as training samples (31.5% ImageNet linear eval).
-- **Jigsaw** (Noroozi & Favaro, 2016): splits each image into a 2×2 grid of non-overlapping patches, shuffles them, and trains a 24-way classifier (4! permutations) to recognize the permutation (45.7%).
-- **Rotation** (Gidaris et al., 2018): rotates images by 0°, ±90°, or 180° and trains a 4-way classifier to predict the rotation angle (48.9%).
-- **Contrastive** (Chen et al., 2020 / SimCLR): the contrastive prediction task described above (69.3%).
+- **Exemplar** (Dosovitskiy et al., 2014) [4]: treats each training instance as its own class and applies heavy transformations; the SS module is a classifier with as many classes as training samples (31.5% ImageNet linear eval).
+- **Jigsaw** (Noroozi & Favaro, 2016) [5]: splits each image into a 2×2 grid of non-overlapping patches, shuffles them, and trains a 24-way classifier (4! permutations) to recognize the permutation (45.7%).
+- **Rotation** (Gidaris et al., 2018) [6]: rotates images by 0°, ±90°, or 180° and trains a 4-way classifier to predict the rotation angle (48.9%).
+- **Contrastive** (Chen et al., 2020 / SimCLR) [3]: the contrastive prediction task described above (69.3%).
 
 For Rotation, Jigsaw, and Exemplar, knowledge is transferred to the student via the logits of the respective classification heads, replacing the cosine-similarity matching used in the contrastive variant.
 
@@ -107,6 +107,8 @@ The original author repository ([xuguodong03/SSKD](https://github.com/xuguodong0
 - **Exemplar:** an instance-classification head with one class per training sample (50,000 classes for CIFAR-100).
 
 For Rotation, Jigsaw, and Exemplar, knowledge is transferred via the logits of these classification heads. The selective transfer strategy (top-$k$% filtering) used in the contrastive variant is not applied to these methods, as they use classification-based matching rather than similarity ranking.
+
+The SSKD repository's network architecture definitions (VGG, ResNet, WRN, ShuffleNet, and MobileNet) are borrowed from the CRD/RepDistiller repository [10], as acknowledged in the SSKD README. The training scripts and the SSKD-specific components (contrastive projection head, selective transfer, SS training pipeline) are original to the SSKD authors.
 
 ### 3.4 Reproducibility Criteria
 
@@ -181,7 +183,7 @@ The reproduced Teacher Acc. of 74.49 is close to the paper's 75.38, a gap of abo
 
 The SSKD framework achieves strong distillation performance, but its standard KD loss $L_{kd}$ has limitations in how it handles class-level and sample-level knowledge transfer. We therefore propose two complementary modifications, DKD and WSLD, to address these limitations.
 
-##### [Decoupled Knowledge Distillation (DKD)](https://arxiv.org/abs/2203.08679)
+##### [Decoupled Knowledge Distillation (DKD)](https://arxiv.org/abs/2203.08679) [7]
 
 For a training sample with ground-truth label $y$, the *target class* refers to class $y$ itself, while *non-target classes* refer to all other $C-1$ classes in the output space.
 
@@ -191,7 +193,7 @@ $$L_{TCKD} = \text{KL}\left(\left[p_t^y,\ 1-p_t^y\right] \,\|\, \left[p_s^y,\ 1-
 
 $$= p_t^y\log\frac{p_t^y}{p_s^y} + (1-p_t^y)\log\frac{1-p_t^y}{1-p_s^y}$$
 
-where $p_t^y$ and $p_s^y$ are the teacher's and student's softmax probabilities on the target class $y$ at temperature $\tau$, where $\tau$ denotes the standard distillation temperature, identical in role to the temperature used in vanilla KD (Hinton et al., 2015), controlling the softness of the output distributions for both teacher and student:
+where $p_t^y$ and $p_s^y$ are the teacher's and student's softmax probabilities on the target class $y$ at temperature $\tau$, where $\tau$ denotes the standard distillation temperature, identical in role to the temperature used in vanilla KD (Hinton et al., 2015) [1], controlling the softness of the output distributions for both teacher and student:
 
 $$p_t^y = \frac{\exp(z_t^y/\tau)}{\sum_{k=1}^{C}\exp(z_t^k/\tau)}, \qquad p_s^y = \frac{\exp(z_s^y/\tau)}{\sum_{k=1}^{C}\exp(z_s^k/\tau)}$$
 
@@ -210,7 +212,7 @@ $$L_{kd}^{DKD} = \tau^2 \left(\alpha \cdot L_{TCKD} + \beta \cdot L_{NCKD}\right
 
 with $\alpha = 1.0$ and $\beta = 8.0$ in our experiments.
 
-##### [Weighted Soft Labels Distillation (WSLD)](https://arxiv.org/abs/2102.00650)
+##### [Weighted Soft Labels Distillation (WSLD)](https://arxiv.org/abs/2102.00650) [8]
 
 Standard KD treats all samples equally, but samples that are already easy for the student carry less informative gradient signal. WSLD assigns a per-sample adaptive weight to the KD loss based on the ratio of student and teacher cross-entropy losses at temperature $\tau = 1$:
 
@@ -243,8 +245,6 @@ Since DKD and WSLD address different aspects of knowledge distillation, they may
 ---
 
 ### 4.3 Experiment 3: New Dataset — vgg13 → vgg8 on Tiny ImageNet
-
-*Owner: Chenyu · Criterion: New data*
 
 **Question:** SSKD's original evaluation is entirely on CIFAR-100 (32×32, 100 classes). Does SSKD's advantage over standard knowledge distillation persist when the same vgg13→vgg8 architecture pair is trained on Tiny ImageNet (64×64, 200 classes), a dataset with higher resolution and a larger label space?
 
@@ -374,7 +374,7 @@ The most concrete architectural difference is feature dimensionality at the SS h
 
 A second observation concerns teacher SS training quality. The resnet56 teacher achieves 42.82% validation accuracy on rotation prediction (chance level: 25%), while the contrastive head reaches 78.62%. Despite the contrastive head's higher raw accuracy, this does not translate to a student-accuracy advantage. One possible explanation is that what matters for distillation is not how well the teacher solves the SS task, but how well the SS-derived gradients *complement* the standard KD signal — and a 4-way geometric classification may provide more complementary training signal than similarity matching in a low-dimensional embedding space.
 
-Confirming the feature-dimension hypothesis would require controlled ablations (e.g., varying projection head dimension while holding everything else fixed) and multi-seed runs. The broader question of how architecture interacts with SS method choice is studied by Kolesnikov et al. (2019), who find that the optimal pretext task varies with architecture configuration across different ResNet widths and depths — consistent with the architecture-dependent ranking we observe, though their setting (self-supervised pre-training on ImageNet) differs from ours (SS-augmented KD on CIFAR-100).
+Confirming the feature-dimension hypothesis would require controlled ablations (e.g., varying projection head dimension while holding everything else fixed) and multi-seed runs. The broader question of how architecture interacts with SS method choice is studied by Kolesnikov et al. (2019) [9], who find that the optimal pretext task varies with architecture configuration across different ResNet widths and depths — consistent with the architecture-dependent ranking we observe, though their setting (self-supervised pre-training on ImageNet) differs from ours (SS-augmented KD on CIFAR-100).
 
 **The bottom two methods are tightly clustered.** Jigsaw and Exemplar produce nearly identical accuracy (70.68 vs. 70.70), despite a substantial gap in SS Quality (45.7 vs. 31.5). This suggests that below a certain SS quality threshold, the marginal benefit to student accuracy levels off, and the positive correlation the paper observes at the top of the quality range does not extend to the bottom. The vgg13→vgg8 results in Section 4.1 show a similar but milder pattern: the Exemplar–Jigsaw gap is 0.12 pp in our reproduction (0.28 pp in the paper), much smaller than the Rotation–Contrastive gap.
 
@@ -384,38 +384,91 @@ Confirming the feature-dimension hypothesis would require controlled ablations (
 
 ---
 
-### 5. Discussion & Conclusion
+## 5. Discussion & Conclusion
 
-**Purpose:** Step back from the numbers. Synthesize, reflect, and address limitations.
+We set out to test the central claim of SSKD (Xu et al., ECCV 2020) [2]: that the quality of a self-supervised pretext task positively correlates with student accuracy in knowledge distillation, and that integrating any SS method into KD improves over standard distillation. We reproduced Table 2 on the original vgg13→vgg8 pair (Section 4.1), proposed two KD loss modifications (Section 4.2), extended the evaluation to Tiny ImageNet (Section 4.3), and tested all four SS methods on a new architecture pair, resnet56→resnet20 (Section 4.4). Below we synthesize our findings, address limitations, and reflect on the reproducibility process.
 
-**Content to cover:**
+### 5.1 Verdict on the Paper's Central Claim
 
-- **Do our results uphold the paper's main conclusions?** (Required by the Exposition rubric.) The main claim is that SS method quality positively correlates with student accuracy, and that SSKD outperforms prior KD methods. State your verdict explicitly: "Our reproduction [supports / partially supports / does not support] the paper's central claim, because [...]." Draw on evidence from both the vgg pair (Exp 1) and the resnet pair (Exp 4) to assess the robustness of this conclusion.
-- **Generalization to Tiny ImageNet.** Does SSKD's advantage hold on a new dataset? If the improvement margin shrinks or vanishes, what does this imply about the scope of the paper's claims?
-- **Loss component contributions.** Do L_T and L_ss each contribute meaningfully, or does one dominate? What does this tell us about the SSKD framework's design?
-- **Codebase completeness as a reproducibility obstacle.** The original codebase only implements contrastive. This means Table 2 as published is not independently verifiable without new implementation work. Discuss what this means for the paper's reproducibility.
-- **Limitations of our reproduction:**
-    - Limited compute → could not run all teacher-student pairs from Table 3/4.
-    - Single-run results vs. multi-seed variance (if applicable).
-    - Any hardware/framework differences.
-    - Tiny ImageNet adaptations (resolution, augmentation) may introduce confounders that make direct comparison to CIFAR-100 results imperfect.
-- **What we learned about reproducibility.** Reflect on the process itself: verifying what a codebase actually implements before planning, the gap between paper descriptions and code, absolute vs. relative trend reproduction.
+Our reproduction partially supports the paper's central claim. The claim has two components: (1) all four SS methods improve student accuracy over vanilla training, and (2) student accuracy is positively correlated with SS method quality, producing the monotonic ranking Exemplar < Jigsaw < Rotation < Contrastive.
 
-**Writing notes:** This is where the Exposition grade is won or lost. Be specific, not generic. Don't write "reproducibility is important" — write about what *this* reproduction taught you.
+Component (1) is robustly supported. Across all three experimental settings — vgg13→vgg8 on CIFAR-100 (Section 4.1), vgg13→vgg8 on Tiny ImageNet (Section 4.3), and resnet56→resnet20 on CIFAR-100 (Section 4.4) — every SSKD variant outperforms the vanilla student by a meaningful margin. On CIFAR-100 with the vgg pair, the worst SSKD method (Jigsaw, 74.34%) still exceeds the vanilla student (70.73%) by 3.61 percentage points. On Tiny ImageNet the improvement floor is +3.32 pp (Jigsaw, 62.73% vs. vanilla 59.41%). On the resnet pair the improvement is smaller but consistent, with all four methods above 70.6% compared to the vanilla baseline of 69.63%. This finding holds regardless of dataset, architecture, or SS method, which is a strong endorsement of the framework's general utility.
+
+Component (2), the monotonic quality–accuracy correlation, receives weaker support. On the original vgg13→vgg8 pair (Section 4.1), the coarse two-tier structure is preserved — Contrastive and Rotation form a top group, Jigsaw and Exemplar form a bottom group — but the fine-grained ordering within tiers is disrupted: Exemplar (74.46%) outperforms Jigsaw (74.34%) in our reproduction, reversing their paper-reported positions. More critically, both the resnet pair (Section 4.4) and Tiny ImageNet (Section 4.3) produce the ranking Rotation > Contrastive, directly contradicting the paper's top-two ordering. The reversal is consistent across two independent experimental axes (new architecture, new dataset), which makes it unlikely to be a one-off fluctuation.
+
+In summary: SSKD as a *framework* — adding self-supervision to knowledge distillation — is well-supported by our results. But the specific claim that SS method quality, as measured by ImageNet linear evaluation, predicts student accuracy in a monotonic fashion is not robust across architectures and datasets. Practitioners should treat the quality–accuracy correlation as a useful heuristic for the original vgg setting rather than a universal law.
+
+### 5.2 Generalization to Tiny ImageNet
+
+The Tiny ImageNet experiments (Section 4.3) confirm that SSKD's advantage over vanilla training transfers to a new dataset. All four SS methods improve over the vanilla vgg8 student (59.41%) by at least 3.32 pp, with improvement magnitudes comparable to the CIFAR-100 results. This is a positive signal for SSKD's generality beyond the single dataset evaluated in the original paper.
+
+Two differences emerge, however. First, the best SSKD variant (Rotation, 63.41%) falls 0.67 pp short of the teacher (64.08%), whereas on CIFAR-100 the best variant (Contrastive, 74.53%) essentially matches the teacher (74.49%). The larger teacher–student gap suggests that SSKD's effectiveness diminishes on harder tasks with more classes and higher resolution, consistent with the intuition that a larger output space makes it harder for a compact student to fully absorb the teacher's knowledge. Second, Rotation overtakes Contrastive on TIN (63.41% vs. 63.22%), paralleling the reversal observed on the resnet pair. One structural explanation is that 90° rotations become a more informative geometric signal on 64×64 images than on 32×32 images, while the contrastive head's effectiveness is bounded by the fixed VGG projection architecture. Since a standard KD-only baseline (without self-supervision) was not run on Tiny ImageNet, we cannot isolate the SS signal's contribution from the combined four-component loss. The gains above represent the full SSKD pipeline relative to vanilla training, which limits the precision of conclusions about the SS component specifically.
+
+### 5.3 Generalization to a New Architecture Pair
+
+The resnet56→resnet20 experiments (Section 4.4) provide the strongest evidence that the SS-quality → student-accuracy correlation is architecture-dependent. Rotation achieves the highest student accuracy (71.31%), outperforming Contrastive (70.87%) by 0.44 pp — a reversal that is consistent with the Tiny ImageNet result and that we traced to a concrete architectural difference: CIFAR-variant ResNets produce 64-dimensional feature vectors after global average pooling, compared to 512 dimensions for the VGG pair. The contrastive head projects features into an embedding space of the same dimensionality as the input, so on the resnet pair it computes cosine similarities in a 64-dimensional space — an 8× reduction compared to VGG. Rotation prediction, as a simple 4-way classification, is less sensitive to this bottleneck.
+
+This finding has a practical implication: when applying SSKD to a new architecture, the best SS method cannot be assumed from prior benchmarks. The original paper acknowledges that SSKD is "model-agnostic" because it transfers only output-level signals, but our results show that *which* output-level signal works best depends on the backbone's feature geometry. Evaluating multiple SS methods on the target architecture is advisable.
+
+### 5.4 Loss Component Contributions
+
+The DKD and WSLD modifications (Section 4.2) each improve slightly over the SSKD baseline (Contrastive): DKD reaches 74.68% (+0.15 pp) and WSLD reaches 74.61% (+0.08 pp), compared to the baseline of 74.53%. Both gains are modest, which is itself informative: it suggests that the self-supervised auxiliary signal already captures much of the complementary knowledge that modifications to the standard KD loss aim to recover. In other words, the SS channel and improved KD losses address overlapping sources of dark knowledge, so their benefits do not stack additively. DKD's slightly stronger performance is consistent with its mechanism — decoupling target-class and non-target-class signals is well-suited to CIFAR-100's fine-grained label space (100 visually similar classes). Since DKD and WSLD operate on different axes (class-level structure vs. sample-level weighting), combining the two is a natural direction for future work, though the small individual gains temper expectations for the combination.
+
+### 5.5 Limitations
+
+Several factors constrain the scope and precision of our conclusions.
+
+All results are single-run with a fixed seed (seed = 0). The observed differences between SS methods — particularly the Rotation–Contrastive gap of 0.44 pp on the resnet pair and 0.19 pp on Tiny ImageNet — fall within the range of typical single-run variance (0.3–0.5 pp on CIFAR-100). Multi-seed experiments with confidence intervals would be needed to confirm whether these reversals are statistically significant or within noise.
+
+Our compute budget limited us to two architecture pairs (vgg13→vgg8 and resnet56→resnet20) and two datasets (CIFAR-100 and Tiny ImageNet). The original paper evaluates SSKD (with the contrastive method only) on six additional teacher–student pairs in Tables 3 and 4. We cannot assess whether the quality–accuracy ranking transfers to larger models such as ResNet-110→ResNet-32 or WRN-40-2→WRN-16-2.
+
+The Tiny ImageNet pipeline required several adaptations beyond the CIFAR-100 setup: a compressed training schedule (140 vs. 240 epochs), earlier LR decay milestones, stronger teacher augmentation (RandAugment and RandomErasing), and larger random-crop padding. These changes were necessary for convergence but introduce confounders that make direct comparison to CIFAR-100 results imperfect. In particular, the stronger teacher augmentation may inflate the teacher's accuracy relative to a CIFAR-100-style training protocol, which could affect the teacher–student gap.
+
+Our experiments were run on RTX 3060 and RTX 3090 GPUs, whereas the original paper used a TITAN-X-Pascal. Floating-point nondeterminism across hardware can produce small numerical differences, though this is unlikely to explain the systematic downward shift (~0.3–1.0 pp) observed across all methods in our vgg pair reproduction. A more probable explanation is the combination of single-seed variance and potential differences in library versions.
+
+### 5.6 Lessons on Reproducibility
+
+Three concrete lessons emerged from this reproduction that go beyond the general observation that reproducibility is valuable.
+
+**Verify what the code implements, not what the paper describes.** The most impactful discovery was the discrepancy between the paper's loss weight assignment and the codebase's actual values. The paper's Eq. 8 assigns $\lambda_3 = 2.7$ to $\mathcal{L}_{ss}$ and $\lambda_4 = 10.0$ to $\mathcal{L}_T$, giving the larger weight to the transformed-data KD term. The released codebase uses `ss_weight=10.0` and `tf_weight=2.7`, effectively reversing the two — giving the larger weight to the self-supervised term instead. Since the paper's reported numbers were generated by the code, the codebase values are what was actually executed. We followed the codebase values in all our experiments. This kind of paper–code mismatch is easy to miss if one reads only the paper and treats the code as a black box, but it can change the interpretation of results.
+
+**Incomplete codebases demand implementation work that blurs the line between reproduction and extension.** The original SSKD repository implements only the contrastive pretext task. Reproducing Table 2 in full — which compares all four SS methods — required us to implement Rotation, Jigsaw, and Exemplar from the paper's textual descriptions in the Appendix (§6.3). This means that Table 2 as published is not independently verifiable without new implementation work, and any discrepancy between our results and the paper's could stem from differences in our implementations rather than from issues with the original claim. The course distinguishes "Reproduced" (existing code evaluated) from "Replicated" (full re-implementation). Our project is technically "Reproduced" for the contrastive method and closer to "Replicated" for the other three, which required writing new SS heads from paper descriptions alone.
+
+**Relative trends matter more than absolute numbers.** Our reproduced accuracies are systematically 0.3–1.0 pp below the paper's across all methods and both architecture pairs. This downward shift likely reflects pipeline-level factors (random seed, single run vs. averaged results, library versions) rather than method-specific issues, since it applies equally to the contrastive method — which reuses the original authors' code — and to our new implementations. The key question in a reproduction is not whether the absolute numbers match exactly, but whether the relative trends and conclusions hold. In our case, the broad two-tier ranking (Contrastive/Rotation at the top, Jigsaw/Exemplar at the bottom) and the consistent improvement over vanilla training both survive the reproduction, even though the fine-grained monotonic ordering and the absolute magnitudes do not match precisely. This distinction — between reproducing a *trend* and reproducing a *number* — is the most useful lens for evaluating reproduction outcomes.
 
 ---
 
-### 6. Author Contributions
+## 6. Author Contributions
 
-**Content:** A brief table or paragraph listing what each member did. Required by the submission guidelines. Example:
+**Yanzhe** reproduced Table 2 (four SS methods on vgg13→vgg8, CIFAR-100) and proposed two complementary loss modifications (DKD and WSLD) to address limitations in the standard KD loss (Criteria: Reproduced, New algorithm variant). He implemented the Rotation, Jigsaw, and Exemplar SS heads based on the paper's Appendix descriptions.
 
-> **Yanzhe** reproduced Table 2 (four SS methods on vgg13→vgg8, CIFAR-100), explored the effect of loss components ($L_T$, $L_{ss}$) on student accuracy (Criterion: Reproduced). He also proposed two complementary loss modifications (DKD, WSLD) to address limitations in the standard KD loss (Criterion: New algorithm variant).
-> **Chenyu** trained the vgg13→vgg8 pair on Tiny ImageNet, adapting the pipeline for the new dataset (Criterion: New data). 
-> **Shanghong** ran all four SS methods on the resnet56→resnet20 pair on CIFAR-100 (Criterion: New algorithm variant). All members contributed to writing the blog post.
-> 
+**Chenyu** trained the vgg13→vgg8 pair on Tiny ImageNet, adapting the training schedule, augmentation pipeline, and data loader for the new dataset (Criterion: New data).
+
+**Shanghong** ran all four SS methods on the resnet56→resnet20 pair on CIFAR-100, including debugging the CIFAR-variant ResNet architecture and analyzing the feature-dimensionality hypothesis (Criterion: New algorithm variant).
+
+All members contributed to writing the blog post. The shared repository is available at [github.com/FN8211/SSKD](https://github.com/FN8211/SSKD).
 
 ---
 
 ### 7. References
 
-Standard academic references. Cite at minimum: SSKD (Xu et al., ECCV 2020), Hinton et al. (2015) for KD, SimCLR (Chen et al., 2020) for contrastive learning, and the original papers for each SS method (Exemplar: Dosovitskiy et al., Jigsaw: Noroozi & Favaro, Rotation: Gidaris et al.). Also cite CRD (Tian et al.) since the SSKD codebase is based on it.
+
+[1] G. Hinton, O. Vinyals, and J. Dean, "Distilling the knowledge in a neural network," arXiv preprint arXiv:1503.02531, 2015.
+
+[2] G. Xu, Z. Liu, X. Li, and C. C. Loy, "Knowledge distillation meets self-supervision," in *Proc. European Conf. Comput. Vis. (ECCV)*, 2020, pp. 588–604.
+
+[3] T. Chen, S. Kornblith, M. Norouzi, and G. Hinton, "A simple framework for contrastive learning of visual representations," in *Proc. Int. Conf. Mach. Learn. (ICML)*, 2020, pp. 1597–1607.
+
+[4] A. Dosovitskiy, J. T. Springenberg, M. Riedmiller, and T. Brox, "Discriminative unsupervised feature learning with exemplar convolutional neural networks," in *Proc. Advances in Neural Inf. Process. Syst. (NeurIPS)*, vol. 27, 2014, pp. 2017–2025.
+
+[5] M. Noroozi and P. Favaro, "Unsupervised visual representation learning by solving jigsaw puzzles," in *Proc. European Conf. Comput. Vis. (ECCV)*, 2016, pp. 69–84.
+
+[6] S. Gidaris, P. Singh, and N. Komodakis, "Unsupervised representation learning by predicting image rotations," in *Proc. Int. Conf. Learn. Represent. (ICLR)*, 2018.
+
+[7] B. Zhao, Q. Cui, R. Song, Y. Qiu, and J. Liang, "Decoupled knowledge distillation," in *Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)*, 2022, pp. 11953–11962.
+
+[8] H. Zhou, L. Song, J. Chen, Y. Zhou, G. Wang, J. Yuan, and Q. Zhang, "Rethinking soft labels for knowledge distillation: A bias-variance tradeoff perspective," in *Proc. Int. Conf. Learn. Represent. (ICLR)*, 2021.
+
+[9] A. Kolesnikov, X. Zhai, and L. Beyer, "Revisiting self-supervised visual representation learning," in *Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)*, 2019, pp. 1920–1929.
+
+[10] Y. Tian, D. Krishnan, and P. Isola, "Contrastive representation distillation," in *Proc. Int. Conf. Learn. Represent. (ICLR)*, 2020.
