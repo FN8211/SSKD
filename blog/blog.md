@@ -8,7 +8,7 @@
 
 **Paper:** Xu et al., "Knowledge Distillation Meets Self-Supervision," ECCV 2020 [2]. ([arXiv:2006.07114](https://arxiv.org/abs/2006.07114))
 
-**Summary:** [TODO]
+**Summary:** We reproduce and extend Xu et al.'s SSKD (ECCV 2020), which augments knowledge distillation with a self-supervised pretext task and claims that higher-quality self-supervision monotonically improves student accuracy (Exemplar < Jigsaw < Rotation < Contrastive). We re-implement the three undocumented SS methods (Rotation, Jigsaw, Exemplar) from the paper's appendix, fix a learning-rate-scheduler bug in the original codebase, and extend evaluation to Tiny ImageNet and a resnet56→resnet20 architecture pair. Our results confirm that all four SS methods consistently outperform vanilla training across settings, but the monotonic quality–accuracy correlation breaks down: Rotation outperforms Contrastive on both the ResNet pair and Tiny ImageNet, revealing that the optimal SS method is architecture- and dataset-dependent. We additionally show that replacing the standard KD loss with DKD or WSLD yields modest but consistent accuracy gains over the SSKD baseline.
 
 ---
 
