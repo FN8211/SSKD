@@ -110,6 +110,8 @@ For Rotation, Jigsaw, and Exemplar, knowledge is transferred via the logits of t
 
 The SSKD repository's network architecture definitions (VGG, ResNet, WRN, ShuffleNet, and MobileNet) are borrowed from the CRD/RepDistiller repository [10], as acknowledged in the SSKD README. The training scripts and the SSKD-specific components (contrastive projection head, selective transfer, SS training pipeline) are original to the SSKD authors.
 
+**Bug in the original teacher training code.** During setup, we discovered that the teacher training script (`teacher.py`) in the original codebase defines a `MultiStepLR` learning rate scheduler but never calls `scheduler.step()`, causing the learning rate to remain fixed at its initial value of 0.05 throughout all 240 training epochs. Without learning rate decay, the teacher fails to converge properly and reaches only ~60% validation accuracy — well below the paper's reported 75.38% and insufficient to provide meaningful soft targets for the student. We fixed this by adding the missing `scheduler.step()` call at the end of each training epoch. After the fix, the teacher achieves 74.49% validation accuracy, consistent with the paper's reported value. All teacher checkpoints used in our experiments are trained with this fix applied.
+
 ### 3.4 Reproducibility Criteria
 
 Our reproduction falls under "Reproduced" rather than "Replicated" in the course terminology: we evaluate existing author code (for the contrastive method) and supplement it with new implementations where needed, rather than re-implementing the entire framework from scratch. Each member is responsible for at least one distinct criterion, as summarized below:
@@ -173,7 +175,7 @@ However, a local reversal occurs in the ranking: Exemplar (74.57) < Jigsaw (74.8
 
 Contrastive directly reuses the original authors' code, so its result of 74.53 serves as a reference for how trustworthy our overall pipeline is. Compared with the paper's 75.48, this is a gap of about 0.95 points, similar in magnitude to the other three methods, which fall roughly 0.3 to 1.0 points below the paper. This suggests the overall downward shift may stem from pipeline-level factors such as random seed, single-run versus averaged results, or PyTorch version differences, rather than being specific to the newly implemented SS methods.
 
-The reproduced Teacher Acc. of 74.49 is close to the paper's 75.38, a gap of about 0.89 points within a reasonable range, suggesting the teacher training pipeline itself is not a major source of discrepancy.
+The reproduced Teacher Acc. of 74.49 is close to the paper's 75.38, a gap of about 0.89 points within a reasonable range, suggesting the teacher training pipeline itself is not a major source of discrepancy. Notably, this result was only achievable after fixing a bug in the original codebase (see Section 3.3): without the `scheduler.step()` fix, the teacher stalls at ~60%, making any meaningful comparison to the paper impossible.
 
 ---
 
@@ -447,6 +449,18 @@ Three concrete lessons emerged from this reproduction that go beyond the general
 **Shanghong** ran all four SS methods on the resnet56→resnet20 pair on CIFAR-100, including debugging the CIFAR-variant ResNet architecture and analyzing the feature-dimensionality hypothesis (Criterion: New algorithm variant).
 
 All members contributed to writing the blog post. The shared repository is available at [github.com/FN8211/SSKD](https://github.com/FN8211/SSKD).
+**Writing notes:** This is where the Exposition grade is won or lost. Be specific, not generic. Don't write "reproducibility is important" — write about what *this* reproduction taught you.
+
+---
+
+### 6. Author Contributions
+
+**Content:** A brief table or paragraph listing what each member did. Required by the submission guidelines. Example:
+
+> **Yanzhe** reproduced Table 2 (four SS methods on vgg13→vgg8, CIFAR-100), explored the effect of loss components ($L_T$, $L_{ss}$) on student accuracy (Criterion: Reproduced). He also proposed two complementary loss modifications (DKD, WSLD) to address limitations in the standard KD loss (Criterion: New algorithm variant).
+> **Chenyu** trained the vgg13→vgg8 pair on Tiny ImageNet, adapting the pipeline for the new dataset (Criterion: New data). During setup, he identified and fixed a bug in the original author's `teacher.py` where `scheduler.step()` was never called (Criterion: Reproduced).
+> **Shanghong** ran all four SS methods on the resnet56→resnet20 pair on CIFAR-100 (Criterion: New algorithm variant). All members contributed to writing the blog post.
+> 
 
 ---
 
